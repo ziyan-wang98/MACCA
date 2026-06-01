@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+*.so
+.DS_Store
+.vscode/
+# datasets / models / replays / logs (download or generate separately)
+datasets/
+offline_datasets/
+*.h5
+*.npy
+*.pth
+*.pt
+*.SC2Replay
+*.SC2Map
+results/
+wandb/
+*.log
+3rdparty/
+StarCraftII/

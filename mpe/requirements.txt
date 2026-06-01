@@ -1,0 +1,13 @@
+# MACCA — MPE (Cooperative Navigation / Predator-Prey / Simple-World)
+# Tested with Python 3.7 and CUDA sm<=86 (e.g. A100).
+torch==1.12.0
+numpy>=1.19,<1.22
+gym==0.9.4
+h5py
+wandb
+tqdm
+imageio>=2.9
+matplotlib>=3.3
+seaborn
+# bundled environments (install in-place):
+#   pip install -e multiagent-particle-envs   # MPE
