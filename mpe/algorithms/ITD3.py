@@ -355,8 +355,22 @@ class ITD3(object):
             use_pred_single_reward = 1
             use_pred_single_ratio = 0
             use_pr_plus_teamr = 0
-            
-            if use_pred_single_reward:  
+
+            if getattr(self.args, 'rew_sum_norm', False):
+                # STABILIZER: ratio-normalize the predicted individual rewards so they sum to the
+                # observed team reward, with a safe denominator + clamp. This makes the redistribution
+                # invariant to psi_r's output *scale*, which keeps the policy stable on unlucky seeds
+                # (the raw psi_r path below has no scale constraint).
+                pred_rewards = self.causal_agent.redistribute_reward(joint_state, joint_action, info)
+                pred_team_rewards = pred_rewards[:, :, 0].sum(dim=-1, keepdim=True).unsqueeze(1)
+                _sign = torch.sign(pred_team_rewards)
+                _sign = torch.where(_sign == 0, torch.ones_like(_sign), _sign)
+                safe_denom = torch.where(pred_team_rewards.abs() < 1e-3, _sign * 1e-3, pred_team_rewards)
+                pred_ratio = (pred_rewards / safe_denom).clamp(-5.0, 5.0)
+                pred_single_rews = (pred_ratio * team_R.unsqueeze(1)).chunk(self.nagents, 1)
+                pred_single_rews = [re[:, 0, 0] for re in pred_single_rews]
+                rews = pred_single_rews
+            elif use_pred_single_reward:
                 #(batch_size, num_agents, 1) -> [tensor(shape=2) for i in range(num_agents)]
                 # agent id (batch_size, num_agent, num_agent)
                 pred_single_rews = self.causal_agent.redistribute_reward(joint_state, joint_action, info).chunk(self.nagents, 1)

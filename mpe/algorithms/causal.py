@@ -20,7 +20,9 @@ class CausalAgent(object):
         self.r_lr = args.r_lr
         self.d_lr = args.d_lr
         self.s_lr = args.s_lr
-        
+        self.grad_clip = getattr(args, 'causal_grad_clip', 0.0)
+        self.use_lr_decay = getattr(args, 'causal_lr_decay', False)
+
         self.opti_eps = args.opti_eps
         self.weight_decay = args.weight_decay
 
@@ -169,12 +171,13 @@ class CausalAgent(object):
         self.create_sparsity_label()
         
         
-        # # lambda for an L2 reg coefficient that decays over time
-        # l2_decay = lambda epoch: 1 / (1 + 0.01 * epoch)
-
-        # # build a LambdaLR scheduler bound to the optimizer
-        # self.scheduler = LambdaLR(self.causal_optimizer, lr_lambda=l2_decay)
-        self.scheduler = None
+        # Optional LR decay on the causal optimizer — smooths the reward predictor late in
+        # training and helps keep psi_r stable on noisy data.
+        if self.use_lr_decay:
+            l2_decay = lambda step: 1.0 / (1.0 + 1e-4 * step)
+            self.scheduler = LambdaLR(self.causal_optimizer, lr_lambda=l2_decay)
+        else:
+            self.scheduler = None
         
 
     def to_device(self, device):
@@ -394,6 +397,10 @@ class CausalAgent(object):
         
         self.causal_optimizer.zero_grad()
         total_loss.backward()
+        if self.grad_clip > 0:
+            torch.nn.utils.clip_grad_norm_(
+                [p for grp in self.causal_optimizer.param_groups for p in grp['params']],
+                self.grad_clip)
         self.causal_optimizer.step()
         if self.scheduler is not None:
             self.scheduler.step()
@@ -453,6 +460,10 @@ class CausalAgent(object):
         
         self.causal_optimizer.zero_grad()
         total_loss.backward()
+        if self.grad_clip > 0:
+            torch.nn.utils.clip_grad_norm_(
+                [p for grp in self.causal_optimizer.param_groups for p in grp['params']],
+                self.grad_clip)
         self.causal_optimizer.step()
         if self.scheduler is not None:
             self.scheduler.step()

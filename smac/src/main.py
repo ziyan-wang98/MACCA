@@ -7,6 +7,7 @@ from sacred import Experiment, SETTINGS
 from sacred.observers import FileStorageObserver
 from sacred.utils import apply_backspaces_and_linefeeds
 import sys
+import random
 import torch as th
 from utils.logging import get_logger
 import yaml
@@ -34,6 +35,12 @@ def my_main(_run, _config, _log):
     config = config_copy(_config)
     np.random.seed(config["seed"])
     th.manual_seed(config["seed"])
+    random.seed(config["seed"])
+    if th.cuda.is_available():
+        th.cuda.manual_seed(config["seed"])
+        th.cuda.manual_seed_all(config["seed"])
+    th.backends.cudnn.deterministic = True
+    th.backends.cudnn.benchmark = False
     config['env_args']['seed'] = config["seed"]
     
     # run
